@@ -163,10 +163,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [HTML2Canvas](https://html2canvas.hertzen.com/) for image generation
 - Google Fonts for handwriting fonts
 
-## 📞 Support
+## 📧 Contact
 
 If you encounter any issues or have questions:
-Contact me at [mazmhmd493@gmail.com](mazmhmd493@gmail.com)
+Contact me at [mazmhmd493@gmail.com](mailto:mazmhmd493@gmail.com)
 
 ---
 
