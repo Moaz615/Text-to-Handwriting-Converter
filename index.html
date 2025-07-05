@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Handwriting Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Dancing+Script:wght@400;700&family=Indie+Flower&family=Pacifico&family=Kalam:wght@300;400;700&family=Patrick+Hand&family=Gochi+Hand&family=Architects+Daughter&family=Permanent+Marker&family=Handlee&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        /* Basic styling for the body to use Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body.dark {
+            background: linear-gradient(135deg, #232946 0%, #3a3a5d 100%) !important;
+        }
+
+        .dark .bg-white {
+            background-color: #232946 !important;
+        }
+
+        .dark .text-gray-800 {
+            color: #f4f4f4 !important;
+        }
+
+        .dark .text-gray-700 {
+            color: #e0e0e0 !important;
+        }
+
+        .dark .text-gray-100 {
+            color: #f4f4f4 !important;
+        }
+
+        .dark .border-gray-200 {
+            border-color: #444466 !important;
+        }
+
+        .dark .border-blue-400 {
+            border-color: #7f9cf5 !important;
+        }
+
+        .dark .shadow-2xl,
+        .dark .shadow-lg,
+        .dark .shadow-xl {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
+        }
+
+        .dark .download-page-button {
+            background-color: #374151 !important;
+            color: #f4f4f4 !important;
+        }
+
+        .dark .download-page-button:hover {
+            background-color: #4b5563 !important;
+        }
+
+        .dark select,
+        .dark textarea {
+            background-color: #232946 !important;
+            color: #f4f4f4 !important;
+            border-color: #444466 !important;
+        }
+
+        .dark option {
+            background-color: #232946 !important;
+            color: #f4f4f4 !important;
+        }
+
+        .dark .border-gray-300 {
+            border-color: #444466 !important;
+        }
+
+        .dark .focus\:ring-blue-300:focus {
+            box-shadow: 0 0 0 4px #7f9cf5 !important;
+        }
+
+        .dark .focus\:ring-purple-400:focus {
+            box-shadow: 0 0 0 4px #a78bfa !important;
+        }
+
+        .dark #importStatus {
+            color: #f4f4f4 !important;
+        }
+
+        /* Font specific styles (applied dynamically) */
+        .font-caveat {
+            font-family: 'Caveat', cursive;
+        }
+
+        .font-dancing-script {
+            font-family: 'Dancing Script', cursive;
+        }
+
+        .font-pacifico {
+            font-family: 'Pacifico', cursive;
+        }
+
+        .font-indie-flower {
+            font-family: 'Indie Flower', cursive;
+        }
+
+        .font-kalam {
+            font-family: 'Kalam', cursive;
+        }
+
+        .font-patrick-hand {
+            font-family: 'Patrick Hand', cursive;
+        }
+
+        .font-gochi-hand {
+            font-family: 'Gochi Hand', cursive;
+        }
+
+        .font-architects-daughter {
+            font-family: 'Architects Daughter', cursive;
+        }
+
+        .font-permanent-marker {
+            font-family: 'Permanent Marker', cursive;
+        }
+
+        .font-handlee {
+            font-family: 'Handlee', cursive;
+        }
+
+        /* Container for multiple notebook pages */
+        #handwritingOutput {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            /* Space between page wrappers */
+            min-height: 250px;
+            padding: 0;
+            box-shadow: none;
+            background-color: transparent;
+            overflow-x: auto;
+            width: 100%;
+            min-width: 200px;
+            /* Will be set inline by JS for responsiveness */
+        }
+
+        /* Wrapper for each page and its button */
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Center the page and button */
+            gap: 10px;
+            /* Space between page and its button */
+            border: 1px solid #e0e0e0;
+            /* Add a subtle border around each page wrapper */
+            padding: 15px;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            max-width: 100vw;
+            overflow-x: auto;
+        }
+
+        .dark .page-wrapper {
+            background-color: #2d3748;
+            border-color: #4a5568;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Base styling for each notebook page */
+        .notebook-page {
+            background-color: #fff;
+            /* Paper color */
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+            /* Subtle inner shadow for depth */
+            position: relative;
+            /* Needed for the red margin line and canvas */
+            overflow: hidden;
+            /* Hide overflow from text or canvas */
+            box-sizing: border-box;
+            /* Include padding in dimensions */
+            /* width is set inline via JS for responsiveness */
+            padding: 10px 25px 20px 40px;
+            /* No top padding, keep side and bottom */
+            line-height: 1.5;
+            /* Default line height */
+            font-size: 20px;
+            /* Default font size */
+            color: #1a202c;
+            /* Default text color */
+            border: 1px solid #d1d5db;
+            /* Subtle border for the page itself */
+            min-width: 200px;
+            max-width: 100vw;
+        }
+
+        /* Canvas for drawing lines - positioned absolutely behind text */
+        .notebook-page canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            /* Ensure it's behind the text */
+            background-color: transparent;
+            /* Ensure canvas background is transparent */
+        }
+
+        /* Text content on the page - positioned relatively above canvas */
+        .notebook-page .page-content {
+            position: relative;
+            z-index: 1;
+            /* Ensure text is above the canvas lines */
+            white-space: pre-wrap;
+            /* Preserve whitespace and line breaks */
+            word-wrap: break-word;
+            /* Break long words */
+        }
+
+        /* Red margin line for the notebook (common to ruled and graph) */
+        .notebook-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            /* Adjust based on padding */
+            width: 1px;
+            height: 100%;
+            background-color: #f44336;
+            /* Red line color */
+            box-shadow: 1px 0 0 rgba(255, 0, 0, 0.2);
+            /* Subtle shadow for the line */
+            z-index: 2;
+            /* Ensure margin line is above text and canvas */
+        }
+
+        /* Specific styles for plain and dotted to remove red margin */
+        .notebook-page.notebook-plain::before,
+        .notebook-page.notebook-dotted::before {
+            content: none;
+        }
+
+        /* Styling for the per-page download button */
+        .download-page-button {
+            background-color: #4CAF50;
+            /* Green */
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .download-page-button:hover {
+            background-color: #45a049;
+        }
+
+        /* Styles for individual page controls */
+        .page-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .page-controls select {
+            flex: 1 1 auto;
+            min-width: 120px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .dark .page-controls select {
+            background-color: #374151 !important;
+            color: #f4f4f4 !important;
+            border-color: #4b5563 !important;
+        }
+
+
+        .page-controls button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .page-controls button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+
+            /* Main container adjustments */
+            .bg-white {
+                padding: 1rem !important;
+                margin: 0.5rem;
+                max-width: calc(100vw - 1rem) !important;
+            }
+
+            /* Title adjustments */
+            h1 {
+                font-size: 1.75rem !important;
+                margin-bottom: 1rem !important;
+            }
+
+            /* Form controls */
+            textarea,
+            select,
+            button {
+                font-size: 16px !important;
+                /* Prevent zoom on iOS */
+                min-height: 44px !important;
+                /* Better touch targets */
+            }
+
+            /* Button improvements */
+            button {
+                padding: 0.75rem 1rem !important;
+                min-height: 44px !important;
+            }
+
+            /* Page controls */
+            .page-controls {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+
+            .page-controls select {
+                min-width: auto !important;
+                width: 100% !important;
+            }
+
+            /* Notebook page adjustments */
+            .notebook-page {
+                font-size: 16px !important;
+                padding: 8px 15px 15px 25px !important;
+            }
+
+            /* Modal adjustments */
+            #downloadOptionsContent {
+                min-width: 280px !important;
+                max-width: calc(100vw - 2rem) !important;
+                padding: 1.5rem 1rem !important;
+            }
+
+            /* Helper text adjustments */
+            .instantInfo {
+                font-size: 0.8rem !important;
+                padding: 0.3rem 0.6rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+
+            /* Extra small screens */
+            .bg-white {
+                padding: 0.75rem !important;
+                margin: 0.25rem;
+            }
+
+            h1 {
+                font-size: 1.5rem !important;
+            }
+
+            .notebook-page {
+                font-size: 14px !important;
+                padding: 6px 12px 12px 20px !important;
+            }
+
+            /* Stack buttons vertically on very small screens */
+            .flex-col.sm\\:flex-row {
+                flex-direction: column !important;
+            }
+        }
+
+        /* Placeholder color for light and dark themes */
+        input::placeholder,
+        textarea::placeholder {
+            color: #a0aec0;
+            opacity: 1;
+        }
+
+        input::-webkit-input-placeholder,
+        textarea::-webkit-input-placeholder {
+            color: #a0aec0;
+            opacity: 1;
+        }
+
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: #000000;
+            opacity: 1;
+        }
+
+        .dark input::-webkit-input-placeholder,
+        .dark textarea::-webkit-input-placeholder {
+            color: #000000;
+            opacity: 1;
+        }
+
+        /* Rich Text Editor Styles */
+        #richTextEditor {
+            outline: none;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+        }
+
+        #richTextEditor:empty:before {
+            content: attr(placeholder);
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        /* Simple Input Area Dark Mode */
+        .dark #richTextEditor {
+            background-color: #1f2937 !important;
+            color: #f4f4f4 !important;
+            border-color: #4b5563 !important;
+        }
+
+        .dark #richTextEditor:focus {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1) !important;
+            background-color: #111827 !important;
+        }
+
+        .dark #richTextEditor:empty:before {
+            color: #6b7280;
+        }
+
+        .dark .text-gray-700 {
+            color: #f4f4f4 !important;
+        }
+
+        /* Formatting button styles */
+        .format-btn {
+            transition: all 0.2s ease;
+        }
+
+        .format-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .format-btn.active {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .dark .format-btn {
+            background-color: #374151 !important;
+            color: #f4f4f4 !important;
+            border-color: #4b5563 !important;
+        }
+
+        .dark .format-btn:hover {
+            background-color: #4b5563 !important;
+        }
+
+        /* Dark mode for formatting toolbar */
+        .dark .mb-2.p-2.bg-gray-50 {
+            background-color: #374151 !important;
+            border-color: #4b5563 !important;
+        }
+
+        .dark .text-gray-700 {
+            color: #f4f4f4 !important;
+        }
+
+        .dark .text-gray-500 {
+            color: #9ca3af !important;
+        }
+
+        /* Dark mode for instructions */
+        .dark .bg-blue-50 {
+            background-color: #1e3a8a !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .dark .text-blue-800 {
+            color: #dbeafe !important;
+        }
+
+        .dark .text-blue-600 {
+            color: #93c5fd !important;
+        }
+
+        /* Color picker dark mode */
+        .dark input[type="color"] {
+            background-color: #374151 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* Font size selector dark mode */
+        .dark select#fontSizeSelect {
+            background-color: #374151 !important;
+            color: #f4f4f4 !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* Color preset buttons */
+        .color-preset {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .color-preset:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-preset:active {
+            transform: scale(0.95);
+        }
+
+        /* File import dark mode styles */
+        .dark .file\:bg-blue-50 {
+            background-color: #1e3a8a !important;
+        }
+
+        .dark .file\:text-blue-700 {
+            color: #93c5fd !important;
+        }
+
+        .dark .hover\:file\:bg-blue-100:hover {
+            background-color: #2563eb !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4"
+    id="mainBody" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+    <button id="darkModeToggle"
+        class="absolute top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 hover:bg-gray-700 focus:outline-none">
+        🌙 Dark Mode
+    </button>
+    <div id="mainAppContainer"
+        class="bg-white p-8 rounded-xl shadow-2xl w-full mx-auto transform transition-all duration-300 hover:scale-[1.01] border border-gray-200 relative overflow-hidden"
+        style="max-width: 100vw; min-width: 320px;">
+        <h1 class="text-4xl font-extrabold text-center text-gray-800 mb-6 tracking-tight">
+            ✍️ Text to Handwriting Converter
+        </h1>
+
+        <div class="mb-6">
+            <label for="inputText" class="block text-gray-700 text-lg font-semibold mb-2">
+                Enter your text below:
+            </label>
+
+
+            <div class="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg flex flex-wrap gap-2 items-center">
+                <span class="text-sm font-medium text-gray-700 mr-2">Format:</span>
+                <button id="boldBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm font-bold"
+                    title="Bold">B</button>
+                <button id="italicBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm italic"
+                    title="Italic">I</button>
+                <button id="underlineBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm underline"
+                    title="Underline">U</button>
+                <span class="text-sm text-gray-500 mx-2">|</span>
+                <button id="alignLeftBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm"
+                    title="Align Left">⫷</button>
+                <button id="alignCenterBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm"
+                    title="Align Center">⫸</button>
+                <button id="alignRightBtn"
+                    class="format-btn px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-100 text-sm"
+                    title="Align Right">⫹</button>
+                <span class="text-sm text-gray-500 mx-2">|</span>
+                <label for="textColorPicker" class="text-sm font-medium text-gray-700 mr-1">Color:</label>
+                <input type="color" id="textColorPicker" value="#000000"
+                    class="w-8 h-8 border border-gray-300 rounded cursor-pointer" title="Text Color">
+                <div class="flex gap-1 ml-1">
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #000000;" data-color="#000000" title="Black"></button>
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #e11d48;" data-color="#e11d48" title="Red"></button>
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #2563eb;" data-color="#2563eb" title="Blue"></button>
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #059669;" data-color="#059669" title="Green"></button>
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #f59e42;" data-color="#f59e42" title="Orange"></button>
+                    <button class="color-preset w-6 h-6 rounded border border-gray-300"
+                        style="background-color: #6d28d9;" data-color="#6d28d9" title="Purple"></button>
+                </div>
+                <span class="text-sm text-gray-500 mx-2">|</span>
+                <label for="fontSizeSelect" class="text-sm font-medium text-gray-700 mr-1">Size:</label>
+                <select id="fontSizeSelect" class="px-2 py-1 border border-gray-300 rounded text-sm">
+                    <option value="12">Small (12px)</option>
+                    <option value="16" selected>Normal (16px)</option>
+                    <option value="20">Large (20px)</option>
+                    <option value="24">Extra Large (24px)</option>
+                    <option value="32">Huge (32px)</option>
+                </select>
+                <span class="text-sm text-gray-500 mx-2">|</span>
+                <button id="clearFormatBtn"
+                    class="format-btn px-2 py-1 bg-red-50 border border-red-200 rounded hover:bg-red-100 text-sm text-red-600"
+                    title="Clear Formatting">Clear</button>
+            </div>
+
+
+
+
+            <div class="mb-6">
+                <label for="richTextEditor" class="block text-gray-700 text-lg font-semibold mb-3">
+                    ✍️ Enter Your Text
+                </label>
+
+                <!-- File Import Section -->
+                <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-center gap-3 mb-3">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                        <span class="text-sm font-medium text-blue-800">Import Text File</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="file" id="fileInput" accept=".txt,.doc,.docx,.rtf,.pdf"
+                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <button id="importBtn"
+                            class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                            Import
+                        </button>
+                    </div>
+                    <p class="text-xs text-blue-600 mt-2">Supported formats: .txt, .doc, .docx, .rtf, .pdf</p>
+                    <div id="importStatus" class="text-xs mt-2" style="display: none;"></div>
+                </div>
+
+                <div id="richTextEditor"
+                    class="w-full p-4 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 text-base resize-y min-h-[150px] bg-gray-50 shadow-sm hover:shadow-md"
+                    contenteditable="true" placeholder="Type your text here..."></div>
+            </div>
+            <textarea id="inputText" style="display: none;"></textarea>
+        </div>
+
+        <div class="mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+                <label for="pageSize" class="block text-gray-700 text-lg font-semibold mb-2">
+                    Page Size:
+                </label>
+                <select id="pageSize"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 text-base shadow-sm appearance-none bg-white pr-8">
+                    <option value="notebook" selected>Notebook (600 × 800 px)</option>
+                    <option value="a4">A4 (210 × 297 mm)</option>
+                    <option value="letter">Letter (8.5 × 11 in)</option>
+                    <option value="legal">Legal (8.5 × 14 in)</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="customPageSizeInputs" style="display:none; margin-top:0.5rem;">
+                    <label class="block text-gray-700 text-sm mb-1">Width (px): <input type="number"
+                            id="customPageWidth" min="100" max="2000" value="600"
+                            class="border border-gray-300 rounded p-1 w-20 ml-2"></label>
+                    <label class="block text-gray-700 text-sm mb-1">Height (px): <input type="number"
+                            id="customPageHeight" min="100" max="2000" value="800"
+                            class="border border-gray-300 rounded p-1 w-20 ml-2"></label>
+                </div>
+            </div>
+
+            <div class="flex-1">
+                <label for="notebookType" class="block text-gray-700 text-lg font-semibold mb-2">
+                    Default Notebook Type:
+                </label>
+                <select id="notebookType"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 text-base shadow-sm appearance-none bg-white pr-8">
+                    <option value="notebook-ruled">Ruled Notebook</option>
+                    <option value="notebook-graph">Graph Notebook</option>
+                    <option value="notebook-dotted">Dotted Notebook</option>
+                    <option value="notebook-plain">Plain Paper</option>
+                    <option value="notebook-wide-ruled">Wide Ruled Notebook</option>
+                    <option value="notebook-narrow-ruled">Narrow Ruled Notebook</option>
+                </select>
+            </div>
+
+            <div class="flex-1">
+                <label for="fontType" class="block text-gray-700 text-lg font-semibold mb-2">
+                    Default Handwriting Font:
+                </label>
+                <select id="fontType"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 text-base shadow-sm appearance-none bg-white pr-8">
+                    <option value="font-caveat">Caveat</option>
+                    <option value="font-dancing-script">Dancing Script</option>
+                    <option value="font-indie-flower">Indie Flower</option>
+                    <option value="font-pacifico">Pacifico</option>
+                    <option value="font-kalam">Kalam</option>
+                    <option value="font-patrick-hand">Patrick Hand</option>
+                    <option value="font-gochi-hand">Gochi Hand</option>
+                    <option value="font-architects-daughter">Architects Daughter</option>
+                    <option value="font-permanent-marker">Permanent Marker</option>
+                    <option value="font-handlee">Handlee</option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <label for="textColor" class="block text-gray-700 text-lg font-semibold mb-2">
+                    Default Text Color:
+                </label>
+                <select id="textColor"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 text-base shadow-sm appearance-none bg-white pr-8">
+                    <option value="#1a202c">Black</option>
+                    <option value="#e11d48">Red</option>
+                    <option value="#2563eb">Blue</option>
+                    <option value="#059669">Green</option>
+                    <option value="#f59e42">Orange</option>
+                    <option value="#fbbf24">Yellow</option>
+                    <option value="#6d28d9">Purple</option>
+                    <option value="#64748b">Gray</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="lineSpacing" class="block text-gray-700 text-lg font-semibold mb-2">
+                Line Spacing:
+            </label>
+            <select id="lineSpacing"
+                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-4 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 text-base shadow-sm appearance-none bg-white pr-8">
+                <option value="auto">Auto (based on notebook type)</option>
+                <option value="tight">Tight (1.2x)</option>
+                <option value="normal">Normal (1.5x)</option>
+                <option value="loose">Loose (2x)</option>
+                <option value="custom">Custom</option>
+            </select>
+            <div id="customLineSpacingInput" style="display:none; margin-top:0.5rem;">
+                <label class="block text-gray-700 text-sm mb-1">Custom Line Height (px): <input type="number"
+                        id="customLineHeight" min="12" max="100" value="25"
+                        class="border border-gray-300 rounded p-1 w-20 ml-2"></label>
+            </div>
+        </div>
+
+        <div class="mb-4 relative" style="z-index: 20;">
+            <button id="marginPopoverBtn" type="button"
+                class="border border-gray-300 rounded px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold shadow-sm transition-all">
+                Margins
+            </button>
+            <div id="marginPopover"
+                style="display:none; position:absolute; left:0; top:110%; background:#fff; border:1px solid #d1d5db; border-radius:0.5rem; box-shadow:0 4px 16px rgba(0,0,0,0.08); padding:1rem; min-width:220px;"
+                class="mt-2">
+                <div class="mb-2">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1" for="marginTop">Top Margin
+                        (px)</label>
+                    <input type="number" id="marginTop" min="0" max="200" value="10"
+                        class="border border-gray-300 rounded p-1 w-20">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1" for="marginBottom">Bottom Margin
+                        (px)</label>
+                    <input type="number" id="marginBottom" min="0" max="200" value="20"
+                        class="border border-gray-300 rounded p-1 w-20">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1" for="marginLeft">Left Margin
+                        (px)</label>
+                    <input type="number" id="marginLeft" min="0" max="300" value="40"
+                        class="border border-gray-300 rounded p-1 w-20">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-gray-700 text-sm font-semibold mb-1" for="marginRight">Right Margin
+                        (px)</label>
+                    <input type="number" id="marginRight" min="0" max="300" value="25"
+                        class="border border-gray-300 rounded p-1 w-20">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 mb-8" id="downloadButtonsRow">
+            <button id="convertButton"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-400">
+                Convert to Handwriting
+            </button>
+            <button id="downloadAllPagesButton"
+                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-400">
+                Download All Pages
+            </button>
+        </div>
+
+
+        <div id="downloadOptionsModal"
+            style="display:none; position:absolute; z-index:1000; left:0; width:100%; background:rgba(0,0,0,0.25); align-items:flex-start; justify-content:center;">
+            <div id="downloadOptionsContent"
+                style="background:#fff; color:#222; border-radius:1rem; box-shadow:0 8px 32px rgba(0,0,0,0.18); padding:2rem 1.5rem; min-width:320px; max-width:90vw; max-height:90vh; display:flex; flex-direction:column; align-items:center; position:relative;">
+                <button id="closeDownloadOptions"
+                    style="position:absolute; top:0.7rem; right:1rem; background:none; border:none; font-size:1.5rem; color:#888; cursor:pointer;">&times;</button>
+                <h3 style="font-size:1.3rem; font-weight:700; margin-bottom:1.2rem; color:#7c3aed;">Download Options
+                </h3>
+                <p style="margin-bottom:1.2rem; text-align:center;">How would you like to download your pages?</p>
+                <button id="downloadSeparateBtn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg text-base mb-3 w-full transition-all duration-200">Each
+                    page as a separate image</button>
+                <button id="downloadCombinedBtn"
+                    class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg text-base w-full transition-all duration-200">All
+                    pages as a single image</button>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-blue-400 pb-2">
+                Your Text in Handwriting:
+            </h2>
+            <div id="handwritingOutput">
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        const inputText = document.getElementById('inputText');
+        const convertButton = document.getElementById('convertButton');
+        const downloadAllPagesButton = document.getElementById('downloadAllPagesButton');
+        const notebookTypeSelectDefault = document.getElementById('notebookType');
+        const fontTypeSelectDefault = document.getElementById('fontType');
+        const textColorSelectDefault = document.getElementById('textColor');
+        const handwritingOutput = document.getElementById('handwritingOutput');
+
+
+        const downloadOptionsModal = document.getElementById('downloadOptionsModal');
+        const downloadSeparateBtn = document.getElementById('downloadSeparateBtn');
+        const downloadCombinedBtn = document.getElementById('downloadCombinedBtn');
+        const closeDownloadOptions = document.getElementById('closeDownloadOptions');
+
+        const fileInput = document.getElementById('fileInput');
+        const importBtn = document.getElementById('importBtn');
+
+
+        const notebookStyles = {
+            'notebook-ruled': { lineHeight: 25, fontSize: 20, padding: 20, lineColor: '#d0d0d0', type: 'ruled', backgroundColor: '#fff', marginLineColor: '#f44336' },
+            'notebook-graph': { lineHeight: 25, fontSize: 20, padding: 20, lineColor: '#d0d0d0', type: 'graph', backgroundColor: '#fff', marginLineColor: '#f44336' },
+            'notebook-plain': { lineHeight: 30, fontSize: 20, padding: 20, lineColor: 'transparent', type: 'plain', backgroundColor: '#fff', marginLineColor: 'transparent' },
+            'notebook-dotted': { lineHeight: 25, fontSize: 20, padding: 20, lineColor: '#a0a0a0', dotRadius: 1.5, type: 'dotted', backgroundColor: '#fff', marginLineColor: '#f44336' },
+            'notebook-wide-ruled': { lineHeight: 35, fontSize: 28, padding: 20, lineColor: '#d0d0d0', type: 'ruled', backgroundColor: '#fff', marginLineColor: '#f44336' },
+            'notebook-narrow-ruled': { lineHeight: 18, fontSize: 14, padding: 20, lineColor: '#d0d0d0', type: 'ruled', backgroundColor: '#fff', marginLineColor: '#f44336' }
+        };
+
+
+        const fontClasses = [
+            'font-caveat', 'font-dancing-script', 'font-pacifico', 'font-indie-flower',
+            'font-kalam', 'font-patrick-hand', 'font-gochi-hand',
+            'font-architects-daughter', 'font-permanent-marker', 'font-handlee'
+        ];
+
+
+        const textColors = [
+            { value: "#1a202c", name: "Black" },
+            { value: "#e11d48", name: "Red" },
+            { value: "#2563eb", name: "Blue" },
+            { value: "#059669", name: "Green" },
+            { value: "#f59e42", name: "Orange" },
+            { value: "#fbbf24", name: "Yellow" },
+            { value: "#6d28d9", name: "Purple" },
+            { value: "#64748b", name: "Gray" }
+        ];
+
+
+        const drawNotebookLines = (canvas, type, lineHeight, lineColor, dotRadius) => {
+
+            const parent = canvas.parentElement;
+            if (parent) {
+
+                const style = window.getComputedStyle(parent);
+                const padLeft = parseFloat(style.paddingLeft) || 0;
+                const padRight = parseFloat(style.paddingRight) || 0;
+                const padTop = parseFloat(style.paddingTop) || 0;
+                const padBottom = parseFloat(style.paddingBottom) || 0;
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = lineColor;
+            ctx.fillStyle = lineColor;
+            ctx.lineWidth = 1;
+
+            if (type === 'ruled' || type === 'wide-ruled' || type === 'narrow-ruled') {
+                for (let y = lineHeight - 0.5; y < canvas.height; y += lineHeight) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            } else if (type === 'graph') {
+                for (let y = lineHeight - 0.5; y < canvas.height; y += lineHeight) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+
+                for (let x = lineHeight - 0.5; x < canvas.width; x += lineHeight) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+            } else if (type === 'dotted' && dotRadius) {
+                for (let y = dotRadius; y < canvas.height; y += lineHeight) {
+                    for (let x = dotRadius; x < canvas.width; x += lineHeight) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        };
+
+
+        const downloadSingleElementAsImage = async (element, filename) => {
+            const originalOverflow = element.style.overflow;
+            element.style.overflow = 'hidden';
+
+            try {
+                const canvas = await html2canvas(element, {
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    backgroundColor: null,
+                });
+
+                const imageUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = imageUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error(`Error generating image for ${filename}:`, error);
+            } finally {
+                element.style.overflow = originalOverflow;
+            }
+        };
+
+        const updatePageAppearance = (pageDiv, pageContentDiv, pageCanvas, selectedNotebookType, selectedFontType, selectedTextColor) => {
+            const styleProps = notebookStyles[selectedNotebookType];
+            const lineHeight = styleProps.lineHeight;
+            const fontSize = styleProps.fontSize;
+            const padding = styleProps.padding;
+
+            // Update notebook page class
+            Object.keys(notebookStyles).forEach(type => pageDiv.classList.remove(type));
+            pageDiv.classList.add(selectedNotebookType);
+
+            fontClasses.forEach(cls => pageDiv.classList.remove(cls));
+            pageDiv.classList.add(selectedFontType);
+
+
+            pageContentDiv.style.color = selectedTextColor;
+            pageDiv.style.backgroundColor = styleProps.backgroundColor;
+
+
+            pageDiv.style.lineHeight = `${lineHeight}px`;
+            pageDiv.style.fontSize = `${fontSize}px`;
+            pageDiv.style.padding = `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
+
+
+            const marginLine = pageDiv.querySelector('.notebook-page::before');
+            if (marginLine) {
+                marginLine.style.backgroundColor = styleProps.marginLineColor;
+            }
+
+
+            const customLineHeight = getCustomLineHeight(lineHeight);
+            drawNotebookLines(pageCanvas, styleProps.type, customLineHeight, styleProps.lineColor, styleProps.dotRadius);
+
+
+            if (selectedNotebookType === 'notebook-plain' || selectedNotebookType === 'notebook-dotted') {
+                pageDiv.classList.add('notebook-plain');
+            } else {
+                pageDiv.classList.remove('notebook-plain');
+            }
+        };
+
+
+        function debounce(fn, delay) {
+            let timer = null;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+
+        let pageSettings = [];
+
+
+        const pageSizeOptions = {
+            notebook: { width: 600, height: 800 },
+            a4: { width: 794, height: 1123 }, // 210x297mm at 96dpi
+            letter: { width: 816, height: 1056 }, // 8.5x11in at 96dpi
+            legal: { width: 816, height: 1344 }, // 8.5x14in at 96dpi
+            custom: { width: 600, height: 800 }
+        };
+
+        function getSelectedPageSize() {
+            const pageSize = document.getElementById('pageSize').value;
+            if (pageSize === 'custom') {
+                const w = parseInt(document.getElementById('customPageWidth').value, 10) || 600;
+                const h = parseInt(document.getElementById('customPageHeight').value, 10) || 800;
+                return { width: w, height: h };
+            }
+            return pageSizeOptions[pageSize];
+        }
+
+
+        const lineSpacingOptions = {
+            auto: null, // Use notebook type default
+            tight: 1.2,
+            normal: 1.5,
+            loose: 2.0,
+            custom: null // Use custom input value
+        };
+
+        function getCustomLineHeight(baseLineHeight) {
+            const lineSpacing = document.getElementById('lineSpacing').value;
+            if (lineSpacing === 'auto') {
+                return baseLineHeight;
+            } else if (lineSpacing === 'custom') {
+                return parseInt(document.getElementById('customLineHeight').value, 10) || baseLineHeight;
+            } else {
+                return Math.round(baseLineHeight * lineSpacingOptions[lineSpacing]);
+            }
+        }
+
+
+        function applyHandwritingVariations(text) {
+            // Just escape HTML and preserve line breaks
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        }
+
+
+        const convertText = () => {
+            console.log('convertText called');
+            handwritingOutput.innerHTML = '';
+            const textToConvert = inputText.value || "Please enter some text to convert.";
+
+            // If the text contains HTML formatting, we need to process it differently
+            const hasFormatting = textToConvert.includes('<') && textToConvert.includes('>');
+            console.log('Has formatting:', hasFormatting);
+            console.log('Text length:', textToConvert.length);
+
+            const defaultNotebookType = notebookTypeSelectDefault.value;
+            const defaultFontType = fontTypeSelectDefault.value;
+            const defaultTextColor = textColorSelectDefault.value;
+
+            const defaultStyleProps = notebookStyles[defaultNotebookType];
+            const baseLineHeight = defaultStyleProps.lineHeight;
+            const defaultLineHeight = getCustomLineHeight(baseLineHeight);
+            const marginTop = parseInt(document.getElementById('marginTop').value, 10) || 0;
+            const marginBottom = parseInt(document.getElementById('marginBottom').value, 10) || 0;
+            const marginLeft = parseInt(document.getElementById('marginLeft').value, 10) || 0;
+            const marginRight = parseInt(document.getElementById('marginRight').value, 10) || 0;
+            const defaultPadding = { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft };
+            const { width: pageWidth, height: pageHeight } = getSelectedPageSize();
+            updateContainerWidths(pageWidth);
+            const maxPageContentHeight = pageHeight;
+
+
+            const tempDiv = document.createElement('div');
+            tempDiv.style.visibility = 'hidden';
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.width = `${pageWidth - (defaultPadding.left + defaultPadding.right)}px`;
+            tempDiv.style.lineHeight = `${defaultLineHeight}px`;
+            tempDiv.style.fontSize = `${defaultStyleProps.fontSize}px`;
+            tempDiv.style.padding = `${defaultPadding.top}px ${defaultPadding.right}px ${defaultPadding.bottom}px ${defaultPadding.left}px`;
+            tempDiv.classList.add(defaultFontType);
+            tempDiv.style.color = defaultTextColor;
+            document.body.appendChild(tempDiv);
+
+            let currentPageText = '';
+            let pageCount = 0;
+
+
+            const processTextForPages = () => {
+
+                if (!textToConvert.trim()) {
+                    return;
+                }
+
+                if (hasFormatting) {
+                    const tempContainer = document.createElement('div');
+                    tempContainer.style.visibility = 'hidden';
+                    tempContainer.style.position = 'absolute';
+                    tempContainer.style.width = `${pageWidth - (defaultPadding.left + defaultPadding.right)}px`;
+                    tempContainer.style.lineHeight = `${defaultLineHeight}px`;
+                    tempContainer.style.fontSize = `${defaultStyleProps.fontSize}px`;
+                    tempContainer.style.padding = `${defaultPadding.top}px ${defaultPadding.right}px ${defaultPadding.bottom}px ${defaultPadding.left}px`;
+                    tempContainer.classList.add(defaultFontType);
+                    tempContainer.style.color = defaultTextColor;
+                    tempContainer.innerHTML = textToConvert;
+                    document.body.appendChild(tempContainer);
+
+
+                    if (tempContainer.scrollHeight <= maxPageContentHeight) {
+                        createNewPageElement(textToConvert);
+                    } else {
+                        let currentPageContent = '';
+                        let currentIndex = 0;
+                        console.log('Processing formatted text with length:', textToConvert.length);
+
+                        while (currentIndex < textToConvert.length) {
+                            let nextSpace = textToConvert.indexOf(' ', currentIndex);
+                            if (nextSpace === -1) nextSpace = textToConvert.length;
+
+
+                            let testContent = textToConvert.substring(currentIndex, nextSpace + 1);
+                            tempContainer.innerHTML = currentPageContent + testContent;
+
+                            if (tempContainer.scrollHeight > maxPageContentHeight && currentPageContent !== '') {
+                                console.log('Page overflow detected, creating new page');
+                                createNewPageElement(currentPageContent.trim());
+                                currentPageContent = testContent;
+                                currentIndex = nextSpace + 1;
+                            } else {
+                                currentPageContent += testContent;
+                                currentIndex = nextSpace + 1;
+                            }
+                        }
+
+
+                        if (currentPageContent.trim()) {
+                            console.log('Creating final page with remaining content');
+                            createNewPageElement(currentPageContent.trim());
+                        }
+                    }
+
+                    document.body.removeChild(tempContainer);
+                } else {
+                    const words = textToConvert.split(' ');
+                    let currentPageText = '';
+                    let wordIndex = 0;
+
+                    while (wordIndex < words.length) {
+                        let word = words[wordIndex];
+
+
+                        let testText = currentPageText + (currentPageText === '' ? '' : ' ') + word;
+                        tempDiv.innerHTML = applyHandwritingVariations(testText);
+
+                        if (tempDiv.scrollHeight > maxPageContentHeight && currentPageText !== '') {
+                            createNewPageElement(currentPageText.trim());
+                            currentPageText = word;
+                            wordIndex++;
+                        } else if (tempDiv.scrollHeight > maxPageContentHeight && currentPageText === '') {
+                            let splitWord = '';
+                            for (let c = 0; c < word.length; c++) {
+                                let testSplit = splitWord + word[c];
+                                tempDiv.innerHTML = applyHandwritingVariations(testSplit);
+                                if (tempDiv.scrollHeight > maxPageContentHeight && splitWord !== '') {
+                                    createNewPageElement(splitWord);
+                                    splitWord = word[c];
+                                } else {
+                                    splitWord += word[c];
+                                }
+                            }
+                            currentPageText = splitWord;
+                            wordIndex++;
+                        } else {
+                            currentPageText += (currentPageText === '' ? '' : ' ') + word;
+                            wordIndex++;
+                        }
+                    }
+
+
+                    if (currentPageText.trim() !== '') {
+                        createNewPageElement(currentPageText.trim());
+                    }
+                }
+            };
+
+            const createNewPageElement = (content) => {
+                pageCount++;
+                console.log('Creating page', pageCount, 'with content length:', content.length);
+
+                const pageWrapper = document.createElement('div');
+                pageWrapper.classList.add('page-wrapper');
+
+                const pageDiv = document.createElement('div');
+                pageDiv.classList.add('notebook-page', defaultNotebookType);
+                pageDiv.style.lineHeight = `${defaultLineHeight}px`;
+                pageDiv.style.fontSize = `${defaultStyleProps.fontSize}px`;
+                pageDiv.style.padding = `${defaultPadding.top}px ${defaultPadding.right}px ${defaultPadding.bottom}px ${defaultPadding.left}px`;
+                pageDiv.style.width = `${pageWidth}px`;
+                pageDiv.style.height = `${maxPageContentHeight + (defaultPadding.top + defaultPadding.bottom)}px`;
+                pageDiv.style.backgroundColor = defaultStyleProps.backgroundColor;
+
+                fontClasses.forEach(cls => pageDiv.classList.remove(cls));
+                pageDiv.classList.add(defaultFontType);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = pageWidth - (defaultPadding.left + defaultPadding.right);
+                canvas.height = maxPageContentHeight + (defaultPadding.top + defaultPadding.bottom);
+                pageDiv.appendChild(canvas);
+
+                const marginLineDiv = document.createElement('div');
+                marginLineDiv.classList.add('notebook-page-margin-line');
+                // marginLineDiv.style.backgroundColor = defaultStyleProps.marginLineColor; // Set initial margin line color
+                // pageDiv.appendChild(marginLineDiv);
+
+                drawNotebookLines(canvas, defaultStyleProps.type, defaultLineHeight, defaultStyleProps.lineColor, defaultStyleProps.dotRadius);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('page-content');
+                contentDiv.innerHTML = applyHandwritingVariations(content);
+                contentDiv.style.maxWidth = `${pageWidth - (defaultPadding.left + defaultPadding.right)}px`;
+                contentDiv.style.lineHeight = `${defaultLineHeight}px`;
+                pageDiv.appendChild(contentDiv);
+
+                // Individual page controls
+                const pageControlsDiv = document.createElement('div');
+                pageControlsDiv.classList.add('page-controls');
+
+                // Add helper text to inform users
+                const instantInfo = document.createElement('div');
+                instantInfo.innerHTML = `
+                   <span style="display:inline-flex;align-items:center;gap:0.4em;">
+                     <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor' width='18' height='18' style='color:#7c3aed;'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z'/></svg>
+                     <span>Changing these options will <b>instantly update</b> this page.</span>
+                   </span>
+                 `;
+                instantInfo.className = 'w-full flex justify-center items-center mb-2';
+                instantInfo.style.background = '#f5f3ff'; // soft purple
+                instantInfo.style.border = '1px solid #c4b5fd'; // light purple border
+                instantInfo.style.borderRadius = '0.5rem';
+                instantInfo.style.padding = '0.4em 0.8em';
+                instantInfo.style.fontSize = '0.93em';
+                instantInfo.style.color = '#7c3aed'; // deep purple for text
+                instantInfo.style.marginBottom = '8px';
+                pageControlsDiv.appendChild(instantInfo);
+
+                // Notebook Type Select for individual page
+                const notebookTypeSelect = document.createElement('select');
+                notebookTypeSelect.classList.add('notebook-type-select', 'p-2', 'border', 'border-gray-300', 'rounded');
+                for (const [value, props] of Object.entries(notebookStyles)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value.replace('notebook-', '').replace('-', ' ');
+                    notebookTypeSelect.appendChild(option);
+                }
+                notebookTypeSelect.value = defaultNotebookType;
+                pageControlsDiv.appendChild(notebookTypeSelect);
+
+                // Font Type Select for individual page
+                const fontTypeSelect = document.createElement('select');
+                fontTypeSelect.classList.add('font-type-select', 'p-2', 'border', 'border-gray-300', 'rounded');
+                fontClasses.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls;
+                    option.textContent = cls.replace('font-', '').replace('-', ' ');
+                    fontTypeSelect.appendChild(option);
+                });
+                fontTypeSelect.value = defaultFontType;
+                pageControlsDiv.appendChild(fontTypeSelect);
+
+                // Text Color Select for individual page
+                const textColorSelect = document.createElement('select');
+                textColorSelect.classList.add('text-color-select', 'p-2', 'border', 'border-gray-300', 'rounded');
+                textColors.forEach(color => {
+                    const option = document.createElement('option');
+                    option.value = color.value;
+                    option.textContent = color.name;
+                    textColorSelect.appendChild(option);
+                });
+                textColorSelect.value = defaultTextColor;
+                pageControlsDiv.appendChild(textColorSelect);
+
+                // Add debounced event listeners to update on change
+                const debouncedUpdate = debounce(() => {
+                    updatePageAppearance(pageDiv, contentDiv, canvas, notebookTypeSelect.value, fontTypeSelect.value, textColorSelect.value);
+                }, 150);
+                notebookTypeSelect.addEventListener('change', debouncedUpdate);
+                fontTypeSelect.addEventListener('change', debouncedUpdate);
+                textColorSelect.addEventListener('change', debouncedUpdate);
+
+                // Add individual page download button
+                const downloadPageBtn = document.createElement('button');
+                downloadPageBtn.textContent = `Download Page ${pageCount}`;
+                downloadPageBtn.classList.add('download-page-button');
+                downloadPageBtn.addEventListener('click', () => downloadSingleElementAsImage(pageDiv, `handwriting_page_${pageCount}.png`));
+
+                pageWrapper.appendChild(pageDiv);
+                pageWrapper.appendChild(pageControlsDiv); // Add controls before download button
+                pageWrapper.appendChild(downloadPageBtn);
+
+                handwritingOutput.appendChild(pageWrapper);
+
+
+                updatePageAppearance(pageDiv, contentDiv, canvas, defaultNotebookType, defaultFontType, defaultTextColor);
+            };
+
+
+            processTextForPages();
+
+
+            if (pageCount === 0 && textToConvert.trim()) {
+                createNewPageElement(textToConvert);
+            }
+
+
+            if (!hasFormatting) {
+                document.body.removeChild(tempDiv);
+            }
+        };
+
+
+        const updateDefaultAppearance = () => {
+            convertText();
+        };
+
+
+        const downloadAllPagesSeparate = async () => {
+            const pages = document.querySelectorAll('.notebook-page');
+            if (pages.length === 0) {
+                console.warn("No pages to download.");
+                return;
+            }
+            const originalOutputOverflow = handwritingOutput.style.overflow;
+            handwritingOutput.style.overflow = 'hidden';
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const originalPageOverflow = page.style.overflow;
+                page.style.overflow = 'hidden';
+                try {
+                    const canvas = await html2canvas(page, {
+                        scale: 2,
+                        logging: false,
+                        useCORS: true,
+                        backgroundColor: null,
+                    });
+                    const imageUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = imageUrl;
+                    link.download = `handwriting_page_${i + 1}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (error) {
+                    console.error(`Error generating image for page ${i + 1}:`, error);
+                } finally {
+                    page.style.overflow = originalPageOverflow;
+                }
+            }
+            handwritingOutput.style.overflow = originalOutputOverflow;
+        };
+
+
+        const downloadAllPagesCombined = async () => {
+            const pages = document.querySelectorAll('.notebook-page');
+            if (pages.length === 0) {
+                console.warn("No pages to download.");
+                return;
+            }
+
+            const canvases = [];
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const originalPageOverflow = page.style.overflow;
+                page.style.overflow = 'hidden';
+                try {
+                    const canvas = await html2canvas(page, {
+                        scale: 2,
+                        logging: false,
+                        useCORS: true,
+                        backgroundColor: null,
+                    });
+                    canvases.push(canvas);
+                } catch (error) {
+                    console.error(`Error generating image for page ${i + 1}:`, error);
+                } finally {
+                    page.style.overflow = originalPageOverflow;
+                }
+            }
+            if (canvases.length === 0) return;
+            const totalHeight = canvases.reduce((sum, c) => sum + c.height, 0);
+            const maxWidth = Math.max(...canvases.map(c => c.width));
+
+            const combinedCanvas = document.createElement('canvas');
+            combinedCanvas.width = maxWidth;
+            combinedCanvas.height = totalHeight;
+            const ctx = combinedCanvas.getContext('2d');
+            let y = 0;
+            for (const c of canvases) {
+                ctx.drawImage(c, 0, y);
+                y += c.height;
+            }
+
+            const imageUrl = combinedCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = 'handwriting_all_pages.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+
+        convertButton.addEventListener('click', convertText);
+        downloadAllPagesButton.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'flex';
+        });
+        downloadSeparateBtn.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'none';
+            downloadAllPagesSeparate();
+        });
+        downloadCombinedBtn.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'none';
+            downloadAllPagesCombined();
+        });
+        closeDownloadOptions.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'none';
+        });
+        notebookTypeSelectDefault.addEventListener('change', updateDefaultAppearance);
+        fontTypeSelectDefault.addEventListener('change', updateDefaultAppearance);
+        textColorSelectDefault.addEventListener('change', updateDefaultAppearance);
+
+
+        const richTextEditor = document.getElementById('richTextEditor');
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
+        const alignLeftBtn = document.getElementById('alignLeftBtn');
+        const alignCenterBtn = document.getElementById('alignCenterBtn');
+        const alignRightBtn = document.getElementById('alignRightBtn');
+        const clearFormatBtn = document.getElementById('clearFormatBtn');
+        const textColorPicker = document.getElementById('textColorPicker');
+        const fontSizeSelect = document.getElementById('fontSizeSelect');
+
+
+        function applyFormatting(command, value = null) {
+            document.execCommand(command, false, value);
+            richTextEditor.focus();
+        }
+
+
+        function syncTextContent() {
+            inputText.value = richTextEditor.innerHTML;
+        }
+
+
+        function updateButtonStates() {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const parentElement = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+                    ? range.commonAncestorContainer.parentElement
+                    : range.commonAncestorContainer;
+
+                // Update bold button
+                boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+
+                italicBtn.classList.toggle('active', document.queryCommandState('italic'));
+
+                underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
+
+
+                const textAlign = parentElement.style.textAlign || 'left';
+                alignLeftBtn.classList.toggle('active', textAlign === 'left');
+                alignCenterBtn.classList.toggle('active', textAlign === 'center');
+                alignRightBtn.classList.toggle('active', textAlign === 'right');
+            }
+        }
+
+
+        boldBtn.addEventListener('click', () => {
+            applyFormatting('bold');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        italicBtn.addEventListener('click', () => {
+            applyFormatting('italic');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        underlineBtn.addEventListener('click', () => {
+            applyFormatting('underline');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        alignLeftBtn.addEventListener('click', () => {
+            applyFormatting('justifyLeft');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        alignCenterBtn.addEventListener('click', () => {
+            applyFormatting('justifyCenter');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        alignRightBtn.addEventListener('click', () => {
+            applyFormatting('justifyRight');
+            updateButtonStates();
+            triggerTextConversion();
+        });
+        clearFormatBtn.addEventListener('click', () => {
+            richTextEditor.innerHTML = richTextEditor.textContent;
+            richTextEditor.focus();
+            updateButtonStates();
+            triggerTextConversion();
+        });
+
+
+        textColorPicker.addEventListener('change', (e) => {
+            const color = e.target.value;
+            document.execCommand('foreColor', false, color);
+            richTextEditor.focus();
+            triggerTextConversion();
+        });
+
+
+        document.querySelectorAll('.color-preset').forEach(button => {
+            button.addEventListener('click', () => {
+                const color = button.getAttribute('data-color');
+                document.execCommand('foreColor', false, color);
+                textColorPicker.value = color;
+                richTextEditor.focus();
+                triggerTextConversion();
+            });
+        });
+
+
+        fontSizeSelect.addEventListener('change', (e) => {
+            const size = e.target.value;
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0 && !selection.isCollapsed) {
+                document.execCommand('styleWithCSS', false, true);
+                document.execCommand('fontSize', false, '7');
+                const range = selection.getRangeAt(0);
+                const span = document.createElement('span');
+                span.style.fontSize = size + 'px';
+                span.innerHTML = range.toString();
+                range.deleteContents();
+                range.insertNode(span);
+            }
+            richTextEditor.focus();
+            triggerTextConversion();
+        });
+
+
+        richTextEditor.addEventListener('mouseup', updateButtonStates);
+        richTextEditor.addEventListener('keyup', updateButtonStates);
+        richTextEditor.addEventListener('input', updateButtonStates);
+
+
+        richTextEditor.addEventListener('input', syncTextContent);
+        richTextEditor.addEventListener('keyup', syncTextContent);
+        richTextEditor.addEventListener('paste', syncTextContent);
+
+
+        function triggerTextConversion() {
+            syncTextContent();
+            console.log('Triggering text conversion after formatting change');
+            setTimeout(() => {
+                console.log('Converting text with content:', inputText.value.substring(0, 100) + '...');
+                convertText();
+            }, 200);
+        }
+
+
+        function applyHandwritingVariations(text) {
+            if (text.includes('<') && text.includes('>')) {
+                text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+                return text;
+            } else {
+                return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            richTextEditor.innerHTML = `<b>Welcome to the Advanced Text to Handwriting Converter!</b><br><br>This tool transforms your typed or formatted text into beautiful, customizable handwritten notebook pages. Explore these powerful features:<br><br><ul><li><b>📁 File Import:</b> Import text from TXT, DOCX, RTF, and PDF files. Simply select a file and watch as your content is automatically extracted and loaded into the editor.</li><li><b>Rich Text Formatting:</b> Select any text and use the toolbar to make it bold, italic, underlined, change color, font size, or alignment. Your formatting is preserved in the handwritten output.</li><li><b>Per-Page Controls:</b> Instantly adjust notebook style, font, color, margins, and line spacing for each page. Changes update the page immediately.</li><li><b>Live Page Splitting:</b> The converter automatically splits your content into multiple pages, respecting formatting, page size, and margin settings.</li><li><b>Custom Page Sizes:</b> Choose from Notebook, A4, Letter, Legal, or set your own custom dimensions. See live page size display.</li><li><b>Margin & Line Spacing Controls:</b> Fine-tune margins and line spacing with easy popover controls and custom values.</li><li><b>Dark Mode:</b> Enjoy a modern, eye-friendly interface with the dark mode.</li><li><b>Download Options:</b> Download all pages as separate images or a single combined image, with a responsive, in-app modal.</li><li><b>Free Text Area:</b> Each page includes a free area at the bottom for extra notes or sketches.</li><li><b>Responsive Design:</b> The app and output area adapt to your chosen page size and device.</li></ul><br><b>Getting Started:</b><br>• Type or paste your text directly into the editor<br>• Use the file import feature above to load content from documents<br>• Apply formatting using the toolbar<br>• Customize your notebook style and see your personalized handwritten pages come to life!`;
+            syncTextContent();
+            convertText();
+        });
+
+
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const mainBody = document.getElementById('mainBody');
+        let darkMode = false;
+        darkModeToggle.textContent = '🌙 Dark Mode';
+        darkModeToggle.addEventListener('click', () => {
+            darkMode = !darkMode;
+            if (darkMode) {
+                document.body.classList.add('dark');
+                darkModeToggle.textContent = '☀️ Light Mode';
+            } else {
+                document.body.classList.remove('dark');
+                darkModeToggle.textContent = '🌙 Dark Mode';
+            }
+            convertText();
+        });
+
+
+        function positionDownloadModal() {
+            const modal = document.getElementById('downloadOptionsModal');
+            const content = document.getElementById('downloadOptionsContent');
+            const btnRow = document.getElementById('downloadButtonsRow');
+            if (!modal || !content || !btnRow) return;
+            const appRect = modal.parentElement.getBoundingClientRect();
+            const btnRect = btnRow.getBoundingClientRect();
+            const offset = btnRect.top - 500;
+            content.style.marginTop = offset > 0 ? `${offset}px` : '16px';
+        }
+
+
+        downloadAllPagesButton.addEventListener('click', () => {
+            downloadOptionsModal.style.display = 'flex';
+            positionDownloadModal();
+        });
+        window.addEventListener('resize', () => {
+            if (downloadOptionsModal.style.display === 'flex') positionDownloadModal();
+        });
+
+
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.notebook-page').forEach(pageDiv => {
+                const canvas = pageDiv.querySelector('canvas');
+                if (!canvas) return;
+                let notebookType = 'notebook-ruled';
+                for (const type of Object.keys(notebookStyles)) {
+                    if (pageDiv.classList.contains(type)) {
+                        notebookType = type;
+                        break;
+                    }
+                }
+                const styleProps = notebookStyles[notebookType];
+                const customLineHeight = getCustomLineHeight(styleProps.lineHeight);
+                drawNotebookLines(canvas, styleProps.type, customLineHeight, styleProps.lineColor, styleProps.dotRadius);
+            });
+        });
+
+
+        const pageSizeSelect = document.getElementById('pageSize');
+        const customPageSizeInputs = document.getElementById('customPageSizeInputs');
+        const customPageWidthInput = document.getElementById('customPageWidth');
+        const customPageHeightInput = document.getElementById('customPageHeight');
+
+        pageSizeSelect.addEventListener('change', () => {
+            if (pageSizeSelect.value === 'custom') {
+                customPageSizeInputs.style.display = '';
+            } else {
+                customPageSizeInputs.style.display = 'none';
+            }
+            const { width: pageWidth } = getSelectedPageSize();
+            updateContainerWidths(pageWidth);
+            convertText();
+        });
+        customPageWidthInput.addEventListener('input', () => {
+            const { width: pageWidth } = getSelectedPageSize();
+            updateContainerWidths(pageWidth);
+            convertText();
+        });
+        customPageHeightInput.addEventListener('input', convertText);
+
+
+        const marginPopoverBtn = document.getElementById('marginPopoverBtn');
+        const marginPopover = document.getElementById('marginPopover');
+        let marginPopoverOpen = false;
+        marginPopoverBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            marginPopoverOpen = !marginPopoverOpen;
+            marginPopover.style.display = marginPopoverOpen ? '' : 'none';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (marginPopoverOpen && !marginPopover.contains(e.target) && e.target !== marginPopoverBtn) {
+                marginPopoverOpen = false;
+                marginPopover.style.display = 'none';
+            }
+        });
+
+
+        ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'].forEach(id => {
+            const input = document.getElementById(id);
+            input.addEventListener('input', (e) => {
+                const maxValue = id === 'marginTop' || id === 'marginBottom' ? 200 : 300;
+                if (parseInt(e.target.value) > maxValue) {
+                    e.target.value = maxValue;
+                }
+                convertText();
+            });
+        });
+
+
+        const lineSpacingSelect = document.getElementById('lineSpacing');
+        const customLineSpacingInput = document.getElementById('customLineSpacingInput');
+        const customLineHeightInput = document.getElementById('customLineHeight');
+
+        lineSpacingSelect.addEventListener('change', () => {
+            if (lineSpacingSelect.value === 'custom') {
+                customLineSpacingInput.style.display = '';
+            } else {
+                customLineSpacingInput.style.display = 'none';
+            }
+            convertText();
+        });
+        customLineHeightInput.addEventListener('input', convertText);
+
+
+        function updateContainerWidths(pageWidth) {
+            const output = document.getElementById('handwritingOutput');
+            if (output) {
+                output.style.minWidth = pageWidth + 'px';
+                output.style.maxWidth = '100vw';
+            }
+
+            const app = document.getElementById('mainAppContainer');
+            if (app) {
+                app.style.minWidth = Math.max(pageWidth + 64, 320) + 'px';
+                app.style.maxWidth = '100vw';
+            }
+        }
+
+        function showImportStatus(message, isError = false) {
+            const statusDiv = document.getElementById('importStatus');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            statusDiv.style.color = isError ? '#dc2626' : '#059669';
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function handleFileImport() {
+            const file = fileInput.files[0];
+            if (!file) {
+                showImportStatus('Please select a file first.', true);
+                return;
+            }
+
+            const importBtn = document.getElementById('importBtn');
+            const originalText = importBtn.textContent;
+            importBtn.textContent = 'Processing...';
+            importBtn.disabled = true;
+
+            try {
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                let extractedText = '';
+
+                switch (fileExtension) {
+                    case 'txt':
+                        extractedText = await extractTextFromTxt(file);
+                        break;
+                    case 'docx':
+                        extractedText = await extractTextFromDocx(file);
+                        break;
+                    case 'doc':
+                        showImportStatus('DOC files are not supported. Please convert to DOCX format.', true);
+                        return;
+                    case 'rtf':
+                        extractedText = await extractTextFromRtf(file);
+                        break;
+                    case 'pdf':
+                        extractedText = await extractTextFromPdf(file);
+                        break;
+                    default:
+                        showImportStatus('Unsupported file format.', true);
+                        return;
+                }
+
+                if (extractedText.trim()) {
+                    richTextEditor.innerHTML = extractedText;
+                    syncTextContent();
+                    convertText();
+                    showImportStatus(`Successfully imported: ${file.name}`);
+                } else {
+                    showImportStatus('No text content found in the file.', true);
+                }
+            } catch (error) {
+                console.error('File import error:', error);
+                showImportStatus(`Error processing file: ${error.message}`, true);
+            } finally {
+                importBtn.textContent = originalText;
+                importBtn.disabled = false;
+            }
+        }
+
+        function extractTextFromTxt(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => reject(new Error('Failed to read text file'));
+                reader.readAsText(file);
+            });
+        }
+
+        async function extractTextFromDocx(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                return result.value;
+            } catch (error) {
+                throw new Error('Failed to extract text from DOCX file');
+            }
+        }
+
+        function extractTextFromRtf(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const rtfContent = e.target.result;
+                        const plainText = convertRtfToText(rtfContent);
+                        resolve(plainText);
+                    } catch (error) {
+                        reject(new Error('Failed to parse RTF file'));
+                    }
+                };
+                reader.onerror = () => reject(new Error('Failed to read RTF file'));
+                reader.readAsText(file);
+            });
+        }
+
+        function convertRtfToText(rtfContent) {
+            // Simple RTF to text conversion
+            let text = rtfContent;
+
+            // Remove RTF control words and symbols
+            text = text.replace(/\\[a-z]+\d*\s?/g, ' '); // Remove control words
+            text = text.replace(/\\[{}]/g, ''); // Remove braces
+            text = text.replace(/[{}]/g, ''); // Remove remaining braces
+            text = text.replace(/\\'/g, "'"); // Convert escaped quotes
+            text = text.replace(/\\"/g, '"'); // Convert escaped quotes
+            text = text.replace(/\\\s/g, ' '); // Convert escaped spaces
+
+            // Remove multiple spaces and clean up
+            text = text.replace(/\s+/g, ' ');
+            text = text.trim();
+
+            return text;
+        }
+
+        async function extractTextFromPdf(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n\n';
+                }
+
+                return fullText.trim();
+            } catch (error) {
+                throw new Error('Failed to extract text from PDF file');
+            }
+        }
+
+        importBtn.addEventListener('click', handleFileImport);
+        fileInput.addEventListener('change', function () {
+            if (fileInput.files.length > 0) {
+                importBtn.textContent = 'Import ' + fileInput.files[0].name;
+            } else {
+                importBtn.textContent = 'Import';
+            }
+        });
+    </script>
+</body>
+
+</html>
