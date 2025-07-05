@@ -74,16 +74,8 @@ git clone https://github.com/yourusername/text-to-handwriting-converter.git
 
 ```
 text-to-handwriting-converter/
-├── not.html                 # Main application file
-├── README.md               # This file
-├── books.png               # Sample image assets
-├── children-reading.png    # Sample image assets
-├── pencil.png              # Sample image assets
-└── Rubik's Cube Game/     # Additional project files
-    ├── index.html
-    ├── cube-logic.js
-    ├── cube-styles.css
-    └── ... (other files)
+├── index.html                 # Main application file
+└──README.md                   # This file
 ```
 
 ## 🎯 Supported File Formats
@@ -174,9 +166,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 If you encounter any issues or have questions:
-1. Check the [Issues](https://github.com/yourusername/text-to-handwriting-converter/issues) page
-2. Create a new issue with detailed information
-3. Include browser version and steps to reproduce
+Contact me at [mazmhmd493@gmail.com](mazmhmd493@gmail.com)
 
 ---
 
